@@ -19,6 +19,7 @@
 #include "avl6211.h"
 #include "mn88436.h"
 #include "cxd2878.h"
+#include "m88rs6060.h"
 #include "tuner_ftm4862.h"
 #include "c_stb_regs_define.h"
 #include <linux/amlogic/cpu_version.h>
@@ -39,6 +40,12 @@ static struct reset_control *dvb_uparsertop_reset_ctl;
 
 static struct aml_dvb meson_dvb;
 
+static struct m88rs6060_config m88rs6060cfg = {
+	.demod_address = 0x69,
+	.pin_ctrl = 0x82,
+	.ci_mode = 0,
+	.ts_mode = 0,
+};
 static struct r912_config r912cfg = {
 	.i2c_address = 0x7A,	
 };
@@ -390,6 +397,18 @@ static int fe_dvb_probe(struct platform_device *pdev)
 						continue;
 					}
 					dev_info(&pdev->dev, "Failed to find AVL6211 demod!\n");
+					
+					reset_demod(i);
+		                        dev_info(&pdev->dev, "DVB demod detection for i2c-%d (%s)...\n", i2c[i], meson_dvb.i2c[i]->name);
+
+		                        dev_info(&pdev->dev, "Checking for Montage M88RS6060 DVB-S2 demod ...\n");
+		                        meson_dvb.fe[i] = m88rs6060_attach(&m88rs6060cfg, meson_dvb.i2c[i]);
+		                        if (meson_dvb.fe[i]) {
+		                	dev_info(&pdev->dev, "M88RS6060 FOUND!\n");
+		                        	meson_dvb.total_nims++;
+			                        continue;
+	                          	}
+	                         	dev_info(&pdev->dev, "Failed to find M88RS6060 demod!\n");
 
 					reset_demod(i);
 					dev_info(&pdev->dev, "Checking for Sony CXD2841ER DVB-C/T/T2 demod ...\n");
